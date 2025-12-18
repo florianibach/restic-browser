@@ -1,0 +1,33 @@
+{{define "content"}}
+<div class="card">
+  <div class="muted">Snapshot: <code>{{.Snap}}</code></div>
+</div>
+
+<table>
+  <thead>
+    <tr><th>Name</th><th>Type</th><th class="right">Size</th><th class="right">Actions</th></tr>
+  </thead>
+  <tbody>
+  {{range .Entries}}
+    <tr>
+      <td>
+        {{if eq .Type "dir"}}
+          📁 <a href="/browse?snap={{$.Snap}}&path={{.Path}}/">{{basename .Path}}</a>
+        {{else}}
+          📄 {{basename .Path}}
+        {{end}}
+      </td>
+      <td class="muted">{{.Type}}</td>
+      <td class="right muted">{{.Size}}</td>
+      <td class="right">
+        {{if ne .Type "dir"}}
+          <a class="btn" href="/download?snap={{$.Snap}}&path={{.Path}}">Download</a>
+        {{end}}
+      </td>
+    </tr>
+  {{end}}
+  </tbody>
+</table>
+{{end}}
+
+{{template "layout" .}}

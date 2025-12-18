@@ -1,0 +1,13 @@
+{{define "content"}}
+{{range .Snapshots}}
+  <div class="card">
+    <div><strong>{{.ShortID}}</strong> <span class="muted">{{.Time}}</span></div>
+    <div class="muted">Host: {{.Hostname}} · User: {{.Username}}</div>
+    <div style="margin-top:10px;">
+      <a class="btn" href="/browse?snap={{.ID}}&path=/">Öffnen</a>
+    </div>
+  </div>
+{{end}}
+{{end}}
+
+{{template "layout" .}}
