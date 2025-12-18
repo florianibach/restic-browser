@@ -5,12 +5,12 @@ RUN apk add --no-cache git
 COPY go.mod ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 go build -o /out/restic-ui .
+RUN CGO_ENABLED=0 go build -o /out/restic-browser .
 
 # Runtime (restic + ca-certs)
 FROM alpine:3.20
 RUN apk add --no-cache ca-certificates restic
 WORKDIR /app
-COPY --from=build /out/restic-ui /app/restic-ui
+COPY --from=build /out/restic-browser /app/restic-browser
 EXPOSE 8080
-ENTRYPOINT ["/app/restic-ui"]
+ENTRYPOINT ["/app/restic-browser"]

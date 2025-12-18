@@ -23,22 +23,22 @@ type Snapshot struct {
 }
 
 type LsEntry struct {
-	Name  string `json:"name"`
-	Path  string `json:"path"`
-	Type  string `json:"type"`
-	Size  int64  `json:"size,omitempty"`
-	Mode  int    `json:"mode,omitempty"` // <-- war string
+	Name string `json:"name"`
+	Path string `json:"path"`
+	Type string `json:"type"`
+	Size int64  `json:"size,omitempty"`
+	Mode int    `json:"mode,omitempty"`  // <-- war string
 	Mtime string `json:"mtime,omitempty"`
 }
 
 type resticLsEvent struct {
 	MessageType string `json:"message_type"`
 
-	Name  string `json:"name"`
-	Path  string `json:"path"`
-	Type  string `json:"type"`
-	Size  int64  `json:"size,omitempty"`
-	Mode  int    `json:"mode,omitempty"` // <-- war string
+	Name string `json:"name"`
+	Path string `json:"path"`
+	Type string `json:"type"`
+	Size int64  `json:"size,omitempty"`
+	Mode int    `json:"mode,omitempty"`  // <-- war string
 	Mtime string `json:"mtime,omitempty"`
 }
 
@@ -140,11 +140,11 @@ func ResticList(ctx context.Context, snapshotID, p string) ([]LsEntry, error) {
 		}
 
 		entries = append(entries, LsEntry{
-			Name:  ev.Name,
-			Path:  ev.Path,
-			Type:  ev.Type,
-			Size:  ev.Size,
-			Mode:  ev.Mode,
+			Name: ev.Name,
+			Path: ev.Path,
+			Type: ev.Type,
+			Size: ev.Size,
+			Mode: ev.Mode,
 			Mtime: ev.Mtime,
 		})
 	}
