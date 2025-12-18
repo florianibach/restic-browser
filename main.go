@@ -70,7 +70,7 @@ func withBasicAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		u, p, ok := r.BasicAuth()
 		if !ok || u != user || p != pass {
-			w.Header().Set("WWW-Authenticate", `Basic realm="restic-ui"`)
+			w.Header().Set("WWW-Authenticate", `Basic realm="restic-browser"`)
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
@@ -86,7 +86,7 @@ func (a *App) handleIndex(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := map[string]any{
-		"Title":     "Restic UI",
+		"Title":     "Restic Browser",
 		"Body":      "index_body",
 		"Snapshots": snaps,
 	}

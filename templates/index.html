@@ -1,13 +1,21 @@
 {{define "content"}}
-{{range .Snapshots}}
-  <div class="card">
-    <div><strong>{{.ShortID}}</strong> <span class="muted">{{.Time}}</span></div>
-    <div class="muted">Host: {{.Hostname}} · User: {{.Username}}</div>
-    <div style="margin-top:10px;">
-      <a class="btn" href="/browse?snap={{.ID}}&path=/">Öffnen</a>
+<div class="row g-3">
+  {{range .Snapshots}}
+  <div class="col-12 col-md-6 col-lg-4">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title mb-1">{{.ShortID}}</h5>
+        <div class="text-muted small mb-2">{{.Time}}</div>
+        <div class="small text-muted">Host: {{.Hostname}} · User: {{.Username}}</div>
+
+        <div class="mt-3">
+          <a class="btn btn-primary btn-sm" href="/browse?snap={{.ID}}&path=/">Öffnen</a>
+        </div>
+      </div>
     </div>
   </div>
-{{end}}
+  {{end}}
+</div>
 {{end}}
 
 {{template "layout" .}}
