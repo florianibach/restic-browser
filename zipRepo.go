@@ -39,7 +39,14 @@ func (a *App) handleDownloadZip(w http.ResponseWriter, r *http.Request) {
 		base = "/"
 	}
 
-	if err := zipDirFromRestic(r.Context(), zw, snap, p, base); err != nil {
+	repoID := strings.ToUpper(r.PathValue("repo"))
+	repo, ok := GetRepo(repoID)
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+
+	if err := zipDirFromRestic(r.Context(), repo, zw, snap, p, base); err != nil {
 		// Wenn schon gestreamt wird: nur loggen
 		log.Printf("zip download failed: %v", err)
 		return
@@ -48,8 +55,8 @@ func (a *App) handleDownloadZip(w http.ResponseWriter, r *http.Request) {
 
 // p muss ein Ordnerpfad mit trailing "/" sein.
 // base ist der "root" der ZIP relativen Pfade.
-func zipDirFromRestic(ctx context.Context, zw *zip.Writer, snap, p, base string) error {
-	entries, err := ResticList(ctx, snap, strings.TrimSuffix(p, "/"))
+func zipDirFromRestic(ctx context.Context, repo RepoConfig, zw *zip.Writer, snap, p, base string) error {
+	entries, err := ResticList(ctx, repo, snap, strings.TrimSuffix(p, "/"))
 	if err != nil {
 		return err
 	}
@@ -63,7 +70,7 @@ func zipDirFromRestic(ctx context.Context, zw *zip.Writer, snap, p, base string)
 
 		if e.Type == "dir" {
 			// Rekursion: dir path als ".../"
-			if err := zipDirFromRestic(ctx, zw, snap, normalizeDirPath(e.Path), base); err != nil {
+			if err := zipDirFromRestic(ctx, repo, zw, snap, normalizeDirPath(e.Path), base); err != nil {
 				return err
 			}
 			continue
@@ -89,7 +96,7 @@ func zipDirFromRestic(ctx context.Context, zw *zip.Writer, snap, p, base string)
 		}
 
 		// restic dump direkt in den ZIP entry streamen
-		if err := ResticDumpToWriter(ctx, snap, e.Path, zf); err != nil {
+		if err := ResticDumpToWriter(ctx, repo, snap, e.Path, zf); err != nil {
 			return err
 		}
 	}

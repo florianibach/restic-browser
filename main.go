@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"path"
-	"path/filepath"
 	"strings"
 	"time"
 )
@@ -19,6 +18,7 @@ var templateFS embed.FS
 type App struct {
 	indexTpl  *template.Template
 	browseTpl *template.Template
+	filesTpl  *template.Template
 }
 
 func main() {
@@ -32,17 +32,20 @@ func main() {
 
 	funcs := template.FuncMap{
 		"basename": path.Base,
+		"lower":    strings.ToLower,
 	}
 
 	indexTpl := template.Must(template.New("").
 		Funcs(funcs).
 		ParseFS(templateFS, "templates/layout.html", "templates/repository.html"))
-
 	browseTpl := template.Must(template.New("").
 		Funcs(funcs).
 		ParseFS(templateFS, "templates/layout.html", "templates/browse.html"))
+	filesTpl := template.Must(template.New("").
+		Funcs(funcs).
+		ParseFS(templateFS, "templates/layout.html", "templates/files.html"))
 
-	app := &App{indexTpl: indexTpl, browseTpl: browseTpl}
+	app := &App{indexTpl: indexTpl, browseTpl: browseTpl, filesTpl: filesTpl}
 
 	mux := http.NewServeMux()
 
@@ -87,64 +90,17 @@ func withBasicAuth(next http.Handler) http.Handler {
 	})
 }
 
-func (a *App) handleFiles(w http.ResponseWriter, r *http.Request) {
-	base := "/repo"
-
-	rel := r.URL.Query().Get("path") // z.B. "docs/srv002"
-	rel = strings.TrimPrefix(rel, "/")
-
-	// Prevent traversal
-	clean := path.Clean("/" + rel) // -> always absolute-like
-	if strings.Contains(clean, "..") {
-		http.Error(w, "invalid path", 400)
-		return
-	}
-	clean = strings.TrimPrefix(clean, "/") // back to relative
-
-	abs := filepath.Join(base, filepath.FromSlash(clean))
-
-	// Read directory
-	entries, err := os.ReadDir(abs)
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
-
-	// If this folder itself is a restic repo root -> redirect to /repositories/<repo>
-	// (In Step 1: repo is ONLY "srv002", so we detect by folder name or mapping)
-	if isResticRepoRoot(abs) {
-		repoID, ok := a.detectRepoIdFromUrlPath(abs) // e.g. "SRV002" if folder name matches
-
-		if ok {
-			http.Redirect(w, r, "/repositories/"+strings.ToLower(repoID), http.StatusFound)
-			return
-		}
-	}
-
-	fmt.Println(entries)
-
-	// Otherwise render file browser table
-	// (Provide "ParentPath" for '..' link)
-}
-
-func (a *App) detectRepoIdFromUrlPath(abs string) (string, bool) {
-	name := filepath.Base(abs)
-	id := strings.ToUpper(name)
-	_, ok := GetRepo(id)
-	return id, ok
-}
-
 func (a *App) handleSnapshots(w http.ResponseWriter, r *http.Request) {
-	snaps, err := ResticSnapshots(r.Context())
-	if err != nil {
-		http.Error(w, fmt.Sprintf("restic snapshots failed: %v", err), 500)
-		return
-	}
-
-	repoID := strings.ToUpper(r.PathValue("repo")) // falls du "srv002" zulässt
+	repoID := strings.ToUpper(r.PathValue("repo"))
 	repo, ok := GetRepo(repoID)
 	if !ok {
 		http.NotFound(w, r)
+		return
+	}
+
+	snaps, err := ResticSnapshots(r.Context(), repo)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("restic snapshots failed: %v", err), 500)
 		return
 	}
 
@@ -173,7 +129,13 @@ func (a *App) handleBrowse(w http.ResponseWriter, r *http.Request) {
 		p = "/"
 	}
 
-	entries, err := ResticList(r.Context(), snap, p)
+	repoID := strings.ToUpper(r.PathValue("repo"))
+	repo, ok := GetRepo(repoID)
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	entries, err := ResticList(r.Context(), repo, snap, p)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("restic ls failed: %v", err), 500)
 		return
@@ -260,7 +222,14 @@ func (a *App) handleDownload(w http.ResponseWriter, r *http.Request) {
 	// content-type unknown; browser will sniff or treat as octet-stream
 	w.Header().Set("Content-Type", "application/octet-stream")
 
-	if err := ResticDumpToWriter(r.Context(), snap, p, w); err != nil {
+	repoID := strings.ToUpper(r.PathValue("repo"))
+	repo, ok := GetRepo(repoID)
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+
+	if err := ResticDumpToWriter(r.Context(), repo, snap, p, w); err != nil {
 		// If headers already started (streaming), can't reliably http.Error.
 		log.Printf("download failed snap=%s path=%s err=%v", snap, p, err)
 		return
