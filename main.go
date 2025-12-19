@@ -98,6 +98,10 @@ func (a *App) handleIndex(w http.ResponseWriter, r *http.Request) {
 func (a *App) handleBrowse(w http.ResponseWriter, r *http.Request) {
 	snap := r.URL.Query().Get("snap")
 	p := r.URL.Query().Get("path")
+
+	p = normalizeDirPath(p)
+	parent := parentPath(p)
+
 	if snap == "" {
 		http.Error(w, "missing snap", 400)
 		return
@@ -115,12 +119,13 @@ func (a *App) handleBrowse(w http.ResponseWriter, r *http.Request) {
 	crumbs := buildBreadcrumbs(p)
 
 	data := map[string]any{
-		"Title":   "Browse",
-		"Body":    "browse_body",
-		"Snap":    snap,
-		"Path":    p,
-		"Crumbs":  crumbs,
-		"Entries": entries,
+		"Title":      "Browse",
+		"Body":       "browse_body",
+		"Snap":       snap,
+		"Path":       p,
+		"ParentPath": parent,
+		"Crumbs":     crumbs,
+		"Entries":    entries,
 	}
 	if err := a.browseTpl.ExecuteTemplate(w, "browse.html", data); err != nil {
 		http.Error(w, err.Error(), 500)
@@ -143,6 +148,36 @@ func buildBreadcrumbs(p string) []map[string]string {
 		out = append(out, map[string]string{"Name": part, "Path": cur + "/"})
 	}
 	return out
+}
+
+func normalizeDirPath(p string) string {
+	if p == "" {
+		return "/"
+	}
+	if !strings.HasPrefix(p, "/") {
+		p = "/" + p
+	}
+	// browse behandelt Ordner als ".../"
+	if p != "/" && !strings.HasSuffix(p, "/") {
+		p += "/"
+	}
+	return p
+}
+
+func parentPath(p string) string {
+	p = normalizeDirPath(p)
+	if p == "/" {
+		return ""
+	}
+	trim := strings.Trim(p, "/") // "a/b"
+	if trim == "" {
+		return ""
+	}
+	parts := strings.Split(trim, "/")
+	if len(parts) <= 1 {
+		return "/"
+	}
+	return "/" + strings.Join(parts[:len(parts)-1], "/") + "/"
 }
 
 func (a *App) handleDownload(w http.ResponseWriter, r *http.Request) {
