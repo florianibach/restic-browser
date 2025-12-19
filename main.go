@@ -37,7 +37,7 @@ func main() {
 
 	indexTpl := template.Must(template.New("").
 		Funcs(funcs).
-		ParseFS(templateFS, "templates/layout.html", "templates/repository.html"))
+		ParseFS(templateFS, "templates/layout.html", "templates/snapshot.html"))
 	browseTpl := template.Must(template.New("").
 		Funcs(funcs).
 		ParseFS(templateFS, "templates/layout.html", "templates/browse.html"))
@@ -109,7 +109,7 @@ func (a *App) handleSnapshots(w http.ResponseWriter, r *http.Request) {
 		"Snapshots": snaps,
 		"Repo":      repo,
 	}
-	if err := a.indexTpl.ExecuteTemplate(w, "index.html", data); err != nil {
+	if err := a.indexTpl.ExecuteTemplate(w, "snapshot.html", data); err != nil {
 		http.Error(w, err.Error(), 500)
 	}
 }
