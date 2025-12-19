@@ -6,30 +6,25 @@
         <div class="text-muted small">Snapshot</div>
         <div><code>{{.Snap}}</code></div>
         <div class="text-muted small">Pfad: <code>{{.Path}}</code></div>
-      </div>
-
-      <div class="d-flex gap-2">
-        {{if .ParentPath}}
-          <a class="btn btn-outline-secondary btn-sm" href="/browse?snap={{.Snap}}&path={{.ParentPath}}">.. nach oben</a>
-        {{end}}
+        <div><a class="btn btn-outline-primary btn-sm" href="/download-zip?snap={{.Snap}}&path={{.Path}}">Download Ordner as ZIP</a></div>
       </div>
     </div>
   </div>
 </div>
 
-<table class="table">
+<table class="table table-hover">
   <thead>
     <tr><th>Name</th><th>Type</th><th class="right">Size</th><th class="right">Actions</th></tr>
   </thead>
-  <tbody>
+  <tbody class="table-group-divider">
   {{if .ParentPath}}
     <tr>
-      <td>
+      <td colspan="4">
         📁 <a href="/browse?snap={{.Snap}}&path={{.ParentPath}}">.. nach oben</a>
       </td>
     </tr>
   {{end}}
-  {{range .Entries}}
+  {{range $index, $_ := .Entries}}
     <tr>
       <td>
         {{if eq .Type "dir"}}
@@ -46,6 +41,9 @@
         {{end}}
       </td>
     </tr>
+    {{if eq $index 0}}
+      <tr class="table-secondary"><td colspan="4"></td></tr>
+    {{end}}
   {{end}}
   </tbody>
 </table>
