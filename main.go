@@ -87,7 +87,6 @@ func (a *App) handleIndex(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := map[string]any{
-		"Title":     "Restic Browser",
 		"Body":      "index_body",
 		"Snapshots": snaps,
 	}
