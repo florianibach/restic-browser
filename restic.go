@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
 	"time"
 )
@@ -111,6 +112,10 @@ func ResticSnapshots(ctx context.Context) ([]Snapshot, error) {
 	if e := json.Unmarshal(out, &snaps); e != nil {
 		return nil, fmt.Errorf("parse json: %w", e)
 	}
+
+	sort.Slice(snaps, func(i, j int) bool {
+		return snaps[i].Time.After(snaps[j].Time)
+	})
 
 	for i := range snaps {
 		if snaps[i].ShortID == "" && len(snaps[i].ID) >= 8 {
