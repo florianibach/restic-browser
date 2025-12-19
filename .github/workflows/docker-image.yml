@@ -1,22 +1,43 @@
-name: Docker Image CI
+name: Build & Publish Docker image
 
 on:
   push:
     branches: [ "master" ]
-    paths-ignore:
-      - "README.md"
-      - ".github/workflows/dockerhub-description.yml"
-  workflow_dispatch:
 
 jobs:
-  build:
+  docker:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write   # erlaubt Git-Tags zu pushen
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # wichtig für git tags
+
+      - name: Calculate version
+        id: version
+        run: |
+          git fetch --tags
+
+          LAST_TAG=$(git tag --list "v*" --sort=-v:refname | head -n 1)
+
+          if [ -z "$LAST_TAG" ]; then
+            VERSION="v0.1.0"
+          else
+            IFS='.' read -r MAJOR MINOR PATCH <<< "${LAST_TAG#v}"
+            PATCH=$((PATCH + 1))
+            VERSION="v$MAJOR.$MINOR.$PATCH"
+          fi
+
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Calculated version: $VERSION"
+
+      - name: Create git tag
+        run: |
+          git tag ${{ steps.version.outputs.version }}
+          git push origin ${{ steps.version.outputs.version }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -30,11 +51,20 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/restic-browser
+          tags: |
+            type=raw,value=latest
+            type=raw,value=${{ steps.version.outputs.version }}
+
       - name: Build and push (multi-arch)
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
           platforms: linux/amd64,linux/arm64
-          tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/restic-browser:latest
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
