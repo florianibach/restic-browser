@@ -6,7 +6,6 @@
         <div class="text-muted small">Snapshot</div>
         <div><code>{{.Snap}}</code></div>
         <div class="text-muted small">Pfad: <code>{{.Path}}</code></div>
-        <div><a class="btn btn-outline-primary btn-sm" href="/download-zip?snap={{.Snap}}&path={{.Path}}">Download Ordner as ZIP</a></div>
       </div>
     </div>
   </div>
@@ -36,6 +35,9 @@
       <td class="muted">{{.Type}}</td>
       <td class="right muted">{{.Size}}</td>
       <td class="right">
+        {{if eq $index 0}}
+          <a class="btn btn-outline" href="/download-zip?snap={{$.Snap}}&path={{$.Path}}">Download folder as ZIP</a>
+        {{end}}
         {{if ne .Type "dir"}}
           <a class="btn" href="/download?snap={{$.Snap}}&path={{.Path}}">Download</a>
         {{end}}
