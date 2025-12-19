@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -35,7 +36,7 @@ func main() {
 
 	indexTpl := template.Must(template.New("").
 		Funcs(funcs).
-		ParseFS(templateFS, "templates/layout.html", "templates/index.html"))
+		ParseFS(templateFS, "templates/layout.html", "templates/repository.html"))
 
 	browseTpl := template.Must(template.New("").
 		Funcs(funcs).
@@ -44,10 +45,17 @@ func main() {
 	app := &App{indexTpl: indexTpl, browseTpl: browseTpl}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", app.handleIndex)
-	mux.HandleFunc("/browse", app.handleBrowse)
-	mux.HandleFunc("/download", app.handleDownload)
-	mux.HandleFunc("/download-zip", app.handleDownloadZip)
+
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/files", http.StatusFound)
+	})
+
+	mux.HandleFunc("/files", app.handleFiles)
+	mux.HandleFunc("/repositories/{repo}", app.handleSnapshots)
+	mux.HandleFunc("/repositories/{repo}/browse", app.handleBrowse)
+	mux.HandleFunc("/repositories/{repo}/download", app.handleDownload)
+	mux.HandleFunc("/repositories/{repo}/download-zip", app.handleDownloadZip)
+
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(200) })
 
 	handler := withBasicAuth(mux)
@@ -79,16 +87,71 @@ func withBasicAuth(next http.Handler) http.Handler {
 	})
 }
 
-func (a *App) handleIndex(w http.ResponseWriter, r *http.Request) {
+func (a *App) handleFiles(w http.ResponseWriter, r *http.Request) {
+	base := "/repo"
+
+	rel := r.URL.Query().Get("path") // z.B. "docs/srv002"
+	rel = strings.TrimPrefix(rel, "/")
+
+	// Prevent traversal
+	clean := path.Clean("/" + rel) // -> always absolute-like
+	if strings.Contains(clean, "..") {
+		http.Error(w, "invalid path", 400)
+		return
+	}
+	clean = strings.TrimPrefix(clean, "/") // back to relative
+
+	abs := filepath.Join(base, filepath.FromSlash(clean))
+
+	// Read directory
+	entries, err := os.ReadDir(abs)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	// If this folder itself is a restic repo root -> redirect to /repositories/<repo>
+	// (In Step 1: repo is ONLY "srv002", so we detect by folder name or mapping)
+	if isResticRepoRoot(abs) {
+		repoID, ok := a.detectRepoIdFromUrlPath(abs) // e.g. "SRV002" if folder name matches
+
+		if ok {
+			http.Redirect(w, r, "/repositories/"+strings.ToLower(repoID), http.StatusFound)
+			return
+		}
+	}
+
+	fmt.Println(entries)
+
+	// Otherwise render file browser table
+	// (Provide "ParentPath" for '..' link)
+}
+
+func (a *App) detectRepoIdFromUrlPath(abs string) (string, bool) {
+	name := filepath.Base(abs)
+	id := strings.ToUpper(name)
+	_, ok := GetRepo(id)
+	return id, ok
+}
+
+func (a *App) handleSnapshots(w http.ResponseWriter, r *http.Request) {
 	snaps, err := ResticSnapshots(r.Context())
 	if err != nil {
 		http.Error(w, fmt.Sprintf("restic snapshots failed: %v", err), 500)
 		return
 	}
 
+	repoID := strings.ToUpper(r.PathValue("repo")) // falls du "srv002" zulässt
+	repo, ok := GetRepo(repoID)
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+
 	data := map[string]any{
 		"Body":      "index_body",
 		"Snapshots": snaps,
+		"Repo":      repo,
 	}
 	if err := a.indexTpl.ExecuteTemplate(w, "index.html", data); err != nil {
 		http.Error(w, err.Error(), 500)

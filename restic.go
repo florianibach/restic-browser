@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -41,6 +42,19 @@ type resticLsEvent struct {
 	Size  int64  `json:"size,omitempty"`
 	Mode  int    `json:"mode,omitempty"` // <-- war string
 	Mtime string `json:"mtime,omitempty"`
+}
+
+func isResticRepoRoot(dir string) bool {
+	// Minimal robust: config + typische Ordner
+	if _, err := os.Stat(filepath.Join(dir, "config")); err != nil {
+		return false
+	}
+	for _, d := range []string{"data", "index", "keys"} {
+		if fi, err := os.Stat(filepath.Join(dir, d)); err != nil || !fi.IsDir() {
+			return false
+		}
+	}
+	return true
 }
 
 // -------------------- Config --------------------
