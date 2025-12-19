@@ -47,8 +47,8 @@ func main() {
 	mux.HandleFunc("/", app.handleIndex)
 	mux.HandleFunc("/browse", app.handleBrowse)
 	mux.HandleFunc("/download", app.handleDownload)
-	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(200) })
 	mux.HandleFunc("/download-zip", app.handleDownloadZip)
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(200) })
 
 	handler := withBasicAuth(mux)
 
