@@ -105,9 +105,9 @@ func (a *App) handleSnapshots(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := map[string]any{
-		"Body":      "index_body",
-		"Snapshots": snaps,
-		"Repo":      repo,
+		"Body":       "index_body",
+		"Snapshots":  snaps,
+		"RepoConfig": repo,
 	}
 	if err := a.indexTpl.ExecuteTemplate(w, "snapshot.html", data); err != nil {
 		http.Error(w, err.Error(), 500)
@@ -151,6 +151,7 @@ func (a *App) handleBrowse(w http.ResponseWriter, r *http.Request) {
 		"ParentPath": parent,
 		"Crumbs":     crumbs,
 		"Entries":    entries,
+		"RepoConfig": repo,
 	}
 	if err := a.browseTpl.ExecuteTemplate(w, "browse.html", data); err != nil {
 		http.Error(w, err.Error(), 500)
