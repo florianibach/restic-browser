@@ -1,18 +1,18 @@
 services:
   restic-browser:
-    build: .
+    build: ..
     ports:
       - "8088:8080"
     environment:
       RESTIC_REPOSITORY: /repo
       #RESTIC_PASSWORD_FILE: /run/secrets/restic_password
-      RESTIC_PASSWORD: qOWkdtoO/z1C9M6KbnlGcO5MvYPvcSitP+AAL2nrBsrMbDVo
+      RESTIC_PASSWORD: ${RESTIC_PASSWORD}
       RESTIC_CACHE_DIR: /cache
       # optional Basic Auth
       #BASIC_AUTH_USER: florian
       #BASIC_AUTH_PASS: changeme
     volumes:
-      - /home/florian/backrest/srv002:/repo:ro
+      - ${REPO_PATH}:/repo:ro
       - restic_cache:/cache
 
 volumes:
