@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -71,14 +72,19 @@ func resticNoLockEnabled() bool {
 func resticEnvForRepo(repo RepoConfig) []string {
 	env := os.Environ()
 
-	env = append(env,
-		"RESTIC_REPOSITORY="+repo.Path,
-		"RESTIC_PASSWORD="+repo.Password,
-	)
+	if repo.Password != "" {
+		env = append(env, "RESTIC_PASSWORD="+repo.Password)
+	}
+
+	if repo.Path != "" {
+		env = append(env, "RESTIC_REPOSITORY="+repo.Path)
+	}
 
 	if cache := os.Getenv("RESTIC_CACHE_DIR"); cache != "" {
 		env = append(env, "RESTIC_CACHE_DIR="+cache)
 	}
+
+	log.Printf("environment: %s", env)
 
 	return env
 }

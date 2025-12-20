@@ -23,7 +23,9 @@
 		"source=/home/florian/backrest,target=/repo,type=bind,readonly",
 		"source=restic-cache,target=/cache,type=volume"
 	],
-
+	"runArgs": [
+        "--env-file", "${localWorkspaceFolder}/.devcontainer/.env"
+    ], 
 	"remoteEnv": {
 		"RESTIC_REPOSITORY": "/repo",
 		"RESTIC_CACHE_DIR": "/cache"
