@@ -10,13 +10,13 @@
     <form method="post" action="/config">
       <div class="mb-3">
         <label class="form-label">ID</label>
-        <input class="form-control" name="id" value="{{.ID}}" readonly>
-        <div class="form-text">Repository identifier (e.g. SRV002).</div>
+        <input class="form-control {{if .ID}} form-control-plaintext{{end}}" name="id" value="{{.ID}}" {{if .ID}}readonly{{end}}>
+        <div class="form-text">Repository identifier.</div>
       </div>
 
       <div class="mb-3">
         <label class="form-label">Path</label>
-        <input class="form-control" name="path" value="{{.Path}}" readonly>
+        <input class="form-control {{if .Path}} form-control-plaintext{{end}}" name="path" value="{{.Path}}"  {{if .Path}}readonly{{end}}>
         <div class="form-text">Absolute path inside the container (must be under /repo).</div>
       </div>
 

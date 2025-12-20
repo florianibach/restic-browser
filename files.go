@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -14,13 +13,14 @@ import (
 )
 
 type FileEntry struct {
-	Name    string
-	RelPath string // relative to /repo, using forward slashes, no leading slash
-	IsDir   bool
-	Size    int64
-	ModTime time.Time
-	IsRepo  bool   // directory is restic repo root AND configured
-	RepoID  string // e.g. "SRV002"
+	Name             string
+	RelPath          string // relative to /repo, using forward slashes, no leading slash
+	IsDir            bool
+	Size             int64
+	ModTime          time.Time
+	IsRepo           bool // directory is restic repo root
+	IsRepoConfigured bool
+	RepoID           string // e.g. "SRV002"
 }
 
 type FilesPageModel struct {
@@ -65,7 +65,9 @@ func (a *App) handleFiles(w http.ResponseWriter, r *http.Request) {
 
 	// If this directory is a restic repo AND configured -> redirect to /repositories/{repo}
 	if isResticRepoRoot(abs) {
-		repoID, ok, err := a.detectRepoIdFromUrlPath(r.Context(), abs)
+
+		repoID := a.detectRepoIdFromUrlPath(abs)
+		_, ok, err := a.store.GetRepo(r.Context(), repoID)
 		if ok && err == nil {
 			http.Redirect(w, r, "/repositories/"+strings.ToLower(repoID), http.StatusFound)
 			return
@@ -111,11 +113,14 @@ func (a *App) handleFiles(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if isDir && isResticRepoRoot(childAbs) {
-			if repoID, ok, err := a.detectRepoIdFromUrlPath(r.Context(), childAbs); ok && err == nil {
-				fe.IsRepo = true
-				fe.RepoID = repoID
+			fe.IsRepo = true
+			fe.RepoID = a.detectRepoIdFromUrlPath(childAbs)
+
+			if _, configured, err := a.store.GetRepo(r.Context(), fe.RepoID); err == nil {
+				fe.IsRepoConfigured = configured
+			} else {
+				fe.IsRepoConfigured = false
 			}
-			//TODO: if !ok {} -> link change to config
 		}
 
 		entries = append(entries, fe)
@@ -169,9 +174,8 @@ func parentRelPath(rel string) (string, bool) {
 	return strings.Join(parts[:len(parts)-1], "/"), true
 }
 
-func (a *App) detectRepoIdFromUrlPath(ctx context.Context, abs string) (string, bool, error) {
+func (a *App) detectRepoIdFromUrlPath(abs string) string {
 	name := filepath.Base(abs)
 	id := strings.ToUpper(name)
-	_, ok, err := a.store.GetRepo(ctx, id)
-	return id, ok, err
+	return id
 }
