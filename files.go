@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -64,8 +65,13 @@ func (a *App) handleFiles(w http.ResponseWriter, r *http.Request) {
 
 	// If this directory is a restic repo AND configured -> redirect to /repositories/{repo}
 	if isResticRepoRoot(abs) {
-		if repoID, ok := a.detectRepoIdFromUrlPath(abs); ok {
+		repoID, ok, err := a.detectRepoIdFromUrlPath(r.Context(), abs)
+		if ok && err == nil {
 			http.Redirect(w, r, "/repositories/"+strings.ToLower(repoID), http.StatusFound)
+			return
+		}
+		if err != nil {
+			http.Error(w, fmt.Sprintf("read dir failed: %v", err), 500)
 			return
 		}
 		// restic repo exists but not configured: show listing + warning (still useful)
@@ -103,7 +109,7 @@ func (a *App) handleFiles(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if isDir && isResticRepoRoot(childAbs) {
-			if repoID, ok := a.detectRepoIdFromUrlPath(childAbs); ok {
+			if repoID, ok, err := a.detectRepoIdFromUrlPath(r.Context(), childAbs); ok && err == nil {
 				fe.IsRepo = true
 				fe.RepoID = repoID
 			}
@@ -160,9 +166,9 @@ func parentRelPath(rel string) (string, bool) {
 	return strings.Join(parts[:len(parts)-1], "/"), true
 }
 
-func (a *App) detectRepoIdFromUrlPath(abs string) (string, bool) {
+func (a *App) detectRepoIdFromUrlPath(ctx context.Context, abs string) (string, bool, error) {
 	name := filepath.Base(abs)
 	id := strings.ToUpper(name)
-	_, ok := GetRepo(id)
-	return id, ok
+	_, ok, err := a.store.GetRepo(ctx, id)
+	return id, ok, err
 }

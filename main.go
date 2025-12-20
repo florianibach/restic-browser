@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"strings"
@@ -19,6 +20,9 @@ type App struct {
 	indexTpl  *template.Template
 	browseTpl *template.Template
 	filesTpl  *template.Template
+	configTpl *template.Template
+
+	store *ConfigStore
 }
 
 func main() {
@@ -28,6 +32,16 @@ func main() {
 	}
 	if os.Getenv("RESTIC_PASSWORD_FILE") == "" && os.Getenv("RESTIC_PASSWORD") == "" {
 		log.Println("WARN: Neither RESTIC_PASSWORD_FILE nor RESTIC_PASSWORD set. restic will likely fail.")
+	}
+
+	dbPath := os.Getenv("CONFIG_DB_PATH")
+	if dbPath == "" {
+		dbPath = "/data/config.db"
+	}
+
+	store, err := OpenConfigStore(dbPath)
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	funcs := template.FuncMap{
@@ -45,7 +59,7 @@ func main() {
 		Funcs(funcs).
 		ParseFS(templateFS, "templates/layout.html", "templates/files.html"))
 
-	app := &App{indexTpl: indexTpl, browseTpl: browseTpl, filesTpl: filesTpl}
+	app := &App{indexTpl: indexTpl, browseTpl: browseTpl, filesTpl: filesTpl, store: store}
 
 	mux := http.NewServeMux()
 
@@ -92,9 +106,21 @@ func withBasicAuth(next http.Handler) http.Handler {
 
 func (a *App) handleSnapshots(w http.ResponseWriter, r *http.Request) {
 	repoID := strings.ToUpper(r.PathValue("repo"))
-	repo, ok := GetRepo(repoID)
+
+	repo, ok, err := a.store.GetRepo(r.Context(), repoID)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
 	if !ok {
-		http.NotFound(w, r)
+		// wenn path als query mitkommt → direkt config
+		p := r.URL.Query().Get("path")
+		if p != "" {
+			http.Redirect(w, r, "/config?id="+url.QueryEscape(repoID)+"&path="+url.QueryEscape(p), http.StatusFound)
+			return
+		}
+		http.Redirect(w, r, "/config?id="+url.QueryEscape(repoID), http.StatusFound)
 		return
 	}
 
@@ -130,11 +156,16 @@ func (a *App) handleBrowse(w http.ResponseWriter, r *http.Request) {
 	}
 
 	repoID := strings.ToUpper(r.PathValue("repo"))
-	repo, ok := GetRepo(repoID)
+	repo, ok, err := a.store.GetRepo(r.Context(), repoID)
 	if !ok {
 		http.NotFound(w, r)
 		return
 	}
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error in loading connfig: %v", err), 500)
+		return
+	}
+
 	entries, err := ResticList(r.Context(), repo, snap, p)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("restic ls failed: %v", err), 500)
@@ -224,9 +255,13 @@ func (a *App) handleDownload(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/octet-stream")
 
 	repoID := strings.ToUpper(r.PathValue("repo"))
-	repo, ok := GetRepo(repoID)
+	repo, ok, err := a.store.GetRepo(r.Context(), repoID)
 	if !ok {
 		http.NotFound(w, r)
+		return
+	}
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error in loading connfig: %v", err), 500)
 		return
 	}
 
