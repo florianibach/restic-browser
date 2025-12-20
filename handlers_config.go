@@ -18,7 +18,7 @@ type ConfigPageModel struct {
 
 func (a *App) handleConfigGet(w http.ResponseWriter, r *http.Request) {
 	id := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("id")))
-	p := strings.TrimSpace(r.URL.Query().Get("path"))
+	p := a.ensureRepoPrefix(strings.TrimSpace(r.URL.Query().Get("path")))
 
 	model := ConfigPageModel{
 		Title:  "Configure Repository",
@@ -38,6 +38,15 @@ func (a *App) handleConfigGet(w http.ResponseWriter, r *http.Request) {
 	_ = a.configTpl.ExecuteTemplate(w, "config.html", model)
 }
 
+func (a *App) ensureRepoPrefix(p string) string {
+	p = strings.TrimSpace(p)
+	if p != "" && !strings.HasPrefix(p, "/") {
+		p = "/repo/" + strings.TrimPrefix(p, "/")
+	}
+
+	return p
+}
+
 func (a *App) handleConfigPost(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, err.Error(), 400)
@@ -45,7 +54,7 @@ func (a *App) handleConfigPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := strings.ToUpper(strings.TrimSpace(r.FormValue("id")))
-	p := strings.TrimSpace(r.FormValue("path"))
+	p := a.ensureRepoPrefix(strings.TrimSpace(r.FormValue("path")))
 	pw := r.FormValue("password")
 	noLock := r.FormValue("no_lock") == "on"
 
