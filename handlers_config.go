@@ -17,8 +17,14 @@ type ConfigPageModel struct {
 }
 
 func (a *App) handleConfigGet(w http.ResponseWriter, r *http.Request) {
+	baseId := "REPO"
+	base := "/repo"
 	id := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("id")))
 	p := a.ensureRepoPrefix(strings.TrimSpace(r.URL.Query().Get("path")))
+
+	if p == "" && strings.ToUpper(id) == baseId {
+		p = base
+	}
 
 	model := ConfigPageModel{
 		Title:  "Configure Repository",
@@ -41,7 +47,7 @@ func (a *App) handleConfigGet(w http.ResponseWriter, r *http.Request) {
 func (a *App) ensureRepoPrefix(p string) string {
 	p = strings.TrimSpace(p)
 	if p != "" && !strings.HasPrefix(p, "/") {
-		p = "/repo/" + strings.TrimPrefix(p, "/")
+		p = "/repo/" + strings.TrimPrefix(strings.TrimPrefix(p, "/repo"), "/")
 	}
 
 	return p

@@ -6,7 +6,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -33,8 +32,6 @@ type FilesPageModel struct {
 	FilesBase  string // "/files"
 	Error      string
 }
-
-var repoNameRe = regexp.MustCompile(`(?i)^srv\d{3}$`)
 
 func (a *App) handleFiles(w http.ResponseWriter, r *http.Request) {
 	const base = "/repo"
