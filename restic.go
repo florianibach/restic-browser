@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -43,6 +45,19 @@ type resticLsEvent struct {
 	Mtime string `json:"mtime,omitempty"`
 }
 
+func isResticRepoRoot(dir string) bool {
+	// Minimal robust: config + typische Ordner
+	if _, err := os.Stat(filepath.Join(dir, "config")); err != nil {
+		return false
+	}
+	for _, d := range []string{"data", "index", "keys"} {
+		if fi, err := os.Stat(filepath.Join(dir, d)); err != nil || !fi.IsDir() {
+			return false
+		}
+	}
+	return true
+}
+
 // -------------------- Config --------------------
 
 func resticNoLockEnabled() bool {
@@ -54,28 +69,28 @@ func resticNoLockEnabled() bool {
 	return v == "1" || v == "true" || v == "yes" || v == "on"
 }
 
-func resticEnv() []string {
+func resticEnvForRepo(repo RepoConfig) []string {
 	env := os.Environ()
 
-	if repo := os.Getenv("RESTIC_REPOSITORY"); repo != "" {
-		env = append(env, "RESTIC_REPOSITORY="+repo)
+	if repo.Password != "" {
+		env = append(env, "RESTIC_PASSWORD="+repo.Password)
 	}
-	if pf := os.Getenv("RESTIC_PASSWORD_FILE"); pf != "" {
-		env = append(env, "RESTIC_PASSWORD_FILE="+pf)
+
+	if repo.Path != "" {
+		env = append(env, "RESTIC_REPOSITORY="+repo.Path)
 	}
-	if pw := os.Getenv("RESTIC_PASSWORD"); pw != "" {
-		env = append(env, "RESTIC_PASSWORD="+pw)
-	}
+
 	if cache := os.Getenv("RESTIC_CACHE_DIR"); cache != "" {
 		env = append(env, "RESTIC_CACHE_DIR="+cache)
 	}
 
+	log.Printf("environment: %s", env)
+
 	return env
 }
 
-func resticArgs(args ...string) []string {
-	if resticNoLockEnabled() {
-		// Setzt no-lock global vor den eigentlichen Command
+func resticArgsForRepo(repo RepoConfig, args ...string) []string {
+	if repo.NoLock {
 		return append([]string{"--no-lock"}, args...)
 	}
 	return args
@@ -83,13 +98,10 @@ func resticArgs(args ...string) []string {
 
 // -------------------- Process runner --------------------
 
-func runRestic(ctx context.Context, args ...string) ([]byte, []byte, error) {
-	//cmd := exec.CommandContext(ctx, "restic", resticArgs(args...)...)
-	finalArgs := resticArgs(args...)
-	fmt.Fprintf(os.Stderr, "RESTIC CMD: restic %s\n", strings.Join(finalArgs, " "))
-
+func runRestic(ctx context.Context, repo RepoConfig, args ...string) ([]byte, []byte, error) {
+	finalArgs := resticArgsForRepo(repo, args...)
 	cmd := exec.CommandContext(ctx, "restic", finalArgs...)
-	cmd.Env = resticEnv()
+	cmd.Env = resticEnvForRepo(repo)
 
 	var out bytes.Buffer
 	var errb bytes.Buffer
@@ -102,8 +114,8 @@ func runRestic(ctx context.Context, args ...string) ([]byte, []byte, error) {
 
 // -------------------- API --------------------
 
-func ResticSnapshots(ctx context.Context) ([]Snapshot, error) {
-	out, errb, err := runRestic(ctx, "snapshots", "--json")
+func ResticSnapshots(ctx context.Context, repo RepoConfig) ([]Snapshot, error) {
+	out, errb, err := runRestic(ctx, repo, "snapshots", "--json")
 	if err != nil {
 		return nil, fmt.Errorf("%w: %s", err, string(errb))
 	}
@@ -125,8 +137,8 @@ func ResticSnapshots(ctx context.Context) ([]Snapshot, error) {
 	return snaps, nil
 }
 
-func ResticList(ctx context.Context, snapshotID, p string) ([]LsEntry, error) {
-	out, errb, err := runRestic(ctx, "ls", snapshotID, p, "--json")
+func ResticList(ctx context.Context, repo RepoConfig, snapshotID, p string) ([]LsEntry, error) {
+	out, errb, err := runRestic(ctx, repo, "ls", snapshotID, p, "--json")
 	if err != nil {
 		return nil, fmt.Errorf("%w: %s", err, string(errb))
 	}
@@ -157,9 +169,9 @@ func ResticList(ctx context.Context, snapshotID, p string) ([]LsEntry, error) {
 	return entries, nil
 }
 
-func ResticDumpToWriter(ctx context.Context, snapshotID, p string, w io.Writer) error {
-	cmd := exec.CommandContext(ctx, "restic", resticArgs("dump", snapshotID, p)...)
-	cmd.Env = resticEnv()
+func ResticDumpToWriter(ctx context.Context, repo RepoConfig, snapshotID, p string, w io.Writer) error {
+	cmd := exec.CommandContext(ctx, "restic", resticArgsForRepo(repo, "dump", snapshotID, p)...)
+	cmd.Env = resticEnvForRepo(repo)
 	cmd.Stderr = os.Stderr
 
 	stdout, err := cmd.StdoutPipe()

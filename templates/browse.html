@@ -3,8 +3,8 @@
   <div class="card-body">
     <div class="d-flex align-items-center justify-content-between">
       <div>
-        <div class="text-muted small">Snapshot</div>
-        <div><code>{{.Snap}}</code></div>
+        <div class="text-muted small">Repository: <a href="/repositories/{{lower .RepoConfig.ID}}">{{.RepoConfig.ID}}</a></div>
+        <div class="text-muted small">Snapshot: <code>{{.Snap}}</code></div>
         <div class="text-muted small">Pfad: <code>{{.Path}}</code></div>
       </div>
     </div>
@@ -19,7 +19,7 @@
   {{if .ParentPath}}
     <tr>
       <td colspan="4">
-        📁 <a href="/browse?snap={{.Snap}}&path={{.ParentPath}}">.. up</a>
+        📁 <a href="browse?snap={{.Snap}}&path={{.ParentPath}}">.. up</a>
       </td>
     </tr>
   {{end}}
@@ -27,7 +27,7 @@
     <tr>
       <td>
         {{if eq .Type "dir"}}
-          📁 <a href="/browse?snap={{$.Snap}}&path={{.Path}}">{{basename .Path}}</a>
+          📁 <a href="browse?snap={{$.Snap}}&path={{.Path}}">{{basename .Path}}</a>
         {{else}}
           📄 {{basename .Path}}
         {{end}}
@@ -36,9 +36,9 @@
       <td class="right muted">{{.Size}}</td>
       <td class="right">
         {{if eq .Type "dir"}}
-          <a class="btn btn-outline" href="/download-zip?snap={{$.Snap}}&path={{.Path}}">Download folder as ZIP</a>
+          <a class="btn btn-outline" href="download-zip?snap={{$.Snap}}&path={{.Path}}">Download folder as ZIP</a>
         {{else}}
-          <a class="btn" href="/download?snap={{$.Snap}}&path={{.Path}}">Download</a>
+          <a class="btn" href="download?snap={{$.Snap}}&path={{.Path}}">Download</a>
         {{end}}
       </td>
     </tr>

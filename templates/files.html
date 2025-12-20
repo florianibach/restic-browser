@@ -1,0 +1,91 @@
+{{define "content"}}
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    <div class="text-muted small">Root: <code>/repo</code></div>
+    <div class="text-muted small">Pfad: <code>{{if .RelPath}}/{{.RelPath}}{{else}}/{{end}}</code></div>
+  </div>
+</div>
+
+<div class="card shadow-sm">
+  <table class="table table-hover mb-0">
+    <thead>
+      <tr>
+        <th style="width: 40px;"></th>
+        <th>Name</th>
+        <th class="text-end">Size</th>
+        <th>Modified</th>
+        <th style="width: 220px;"></th>
+      </tr>
+    </thead>
+
+    <tbody class="table-group-divider">
+      {{if .ShowParent}}
+      <tr>
+        <td>📁</td>
+        <td colspan="4">
+          <a href="{{.FilesBase}}?path={{.ParentRel}}">.. nach oben</a>
+        </td>
+      </tr>
+      {{end}}
+
+      {{range .Entries}}
+      <tr>
+        <td>
+          {{if .IsDir}}📁{{else}}📄{{end}}
+        </td>
+
+        <td>
+          {{if .IsDir}}
+            {{if .IsRepo}}
+              <strong>{{.Name}}</strong>
+              <div class="text-muted small">Restic repository</div>
+            {{else}}
+              {{.Name}}
+            {{end}}
+          {{else}}
+            {{.Name}}
+          {{end}}
+        </td>
+
+        <td class="text-end text-muted">
+          {{if .IsDir}}—{{else}}{{.Size}}{{end}}
+        </td>
+
+        <td class="text-muted">
+          {{if .ModTime.IsZero}}—{{else}}{{.ModTime}}{{end}}
+        </td>
+
+        <td class="text-end">
+          {{if .IsDir}}
+            {{if .IsRepo}}
+              <a class="btn btn-primary btn-sm"
+                 href="{{$.RepoBase}}/{{lower .RepoID}}">
+                Open Repo
+              </a>
+            {{else}}
+              <a class="btn btn-outline-secondary btn-sm"
+                 href="{{$.FilesBase}}?path={{.RelPath}}">
+                Open
+              </a>
+            {{end}}
+          {{else}}
+            <!-- optional: file download later -->
+            <span class="text-muted small">—</span>
+          {{end}}
+        </td>
+      </tr>
+      {{end}}
+    </tbody>
+
+    <tfoot>
+      <tr class="table-light">
+        <td colspan="5" class="text-muted small">
+          {{len .Entries}} entries
+        </td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+{{end}}
+
+{{template "layout" .}}

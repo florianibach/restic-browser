@@ -19,7 +19,7 @@
           <td>{{.Hostname}}</td>
           <td>{{.Username}}</td>
           <td>{{.Time}}</td>
-          <td><a class="btn btn-primary stretched-link" href="/browse?snap={{.ID}}&path=/" class="">Open</a></td>
+          <td><a class="btn btn-primary stretched-link" href="{{lower $.RepoConfig.ID}}/browse?snap={{.ID}}&path=/" class="">Open</a></td>
         </tr>
       {{end}}
     </tbody>

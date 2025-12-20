@@ -18,6 +18,7 @@ var templateFS embed.FS
 type App struct {
 	indexTpl  *template.Template
 	browseTpl *template.Template
+	filesTpl  *template.Template
 }
 
 func main() {
@@ -31,23 +32,33 @@ func main() {
 
 	funcs := template.FuncMap{
 		"basename": path.Base,
+		"lower":    strings.ToLower,
 	}
 
 	indexTpl := template.Must(template.New("").
 		Funcs(funcs).
-		ParseFS(templateFS, "templates/layout.html", "templates/index.html"))
-
+		ParseFS(templateFS, "templates/layout.html", "templates/snapshot.html"))
 	browseTpl := template.Must(template.New("").
 		Funcs(funcs).
 		ParseFS(templateFS, "templates/layout.html", "templates/browse.html"))
+	filesTpl := template.Must(template.New("").
+		Funcs(funcs).
+		ParseFS(templateFS, "templates/layout.html", "templates/files.html"))
 
-	app := &App{indexTpl: indexTpl, browseTpl: browseTpl}
+	app := &App{indexTpl: indexTpl, browseTpl: browseTpl, filesTpl: filesTpl}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", app.handleIndex)
-	mux.HandleFunc("/browse", app.handleBrowse)
-	mux.HandleFunc("/download", app.handleDownload)
-	mux.HandleFunc("/download-zip", app.handleDownloadZip)
+
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/files", http.StatusFound)
+	})
+
+	mux.HandleFunc("/files", app.handleFiles)
+	mux.HandleFunc("/repositories/{repo}", app.handleSnapshots)
+	mux.HandleFunc("/repositories/{repo}/browse", app.handleBrowse)
+	mux.HandleFunc("/repositories/{repo}/download", app.handleDownload)
+	mux.HandleFunc("/repositories/{repo}/download-zip", app.handleDownloadZip)
+
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(200) })
 
 	handler := withBasicAuth(mux)
@@ -79,18 +90,26 @@ func withBasicAuth(next http.Handler) http.Handler {
 	})
 }
 
-func (a *App) handleIndex(w http.ResponseWriter, r *http.Request) {
-	snaps, err := ResticSnapshots(r.Context())
+func (a *App) handleSnapshots(w http.ResponseWriter, r *http.Request) {
+	repoID := strings.ToUpper(r.PathValue("repo"))
+	repo, ok := GetRepo(repoID)
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+
+	snaps, err := ResticSnapshots(r.Context(), repo)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("restic snapshots failed: %v", err), 500)
 		return
 	}
 
 	data := map[string]any{
-		"Body":      "index_body",
-		"Snapshots": snaps,
+		"Body":       "index_body",
+		"Snapshots":  snaps,
+		"RepoConfig": repo,
 	}
-	if err := a.indexTpl.ExecuteTemplate(w, "index.html", data); err != nil {
+	if err := a.indexTpl.ExecuteTemplate(w, "snapshot.html", data); err != nil {
 		http.Error(w, err.Error(), 500)
 	}
 }
@@ -110,7 +129,13 @@ func (a *App) handleBrowse(w http.ResponseWriter, r *http.Request) {
 		p = "/"
 	}
 
-	entries, err := ResticList(r.Context(), snap, p)
+	repoID := strings.ToUpper(r.PathValue("repo"))
+	repo, ok := GetRepo(repoID)
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	entries, err := ResticList(r.Context(), repo, snap, p)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("restic ls failed: %v", err), 500)
 		return
@@ -126,6 +151,7 @@ func (a *App) handleBrowse(w http.ResponseWriter, r *http.Request) {
 		"ParentPath": parent,
 		"Crumbs":     crumbs,
 		"Entries":    entries,
+		"RepoConfig": repo,
 	}
 	if err := a.browseTpl.ExecuteTemplate(w, "browse.html", data); err != nil {
 		http.Error(w, err.Error(), 500)
@@ -197,7 +223,14 @@ func (a *App) handleDownload(w http.ResponseWriter, r *http.Request) {
 	// content-type unknown; browser will sniff or treat as octet-stream
 	w.Header().Set("Content-Type", "application/octet-stream")
 
-	if err := ResticDumpToWriter(r.Context(), snap, p, w); err != nil {
+	repoID := strings.ToUpper(r.PathValue("repo"))
+	repo, ok := GetRepo(repoID)
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+
+	if err := ResticDumpToWriter(r.Context(), repo, snap, p, w); err != nil {
 		// If headers already started (streaming), can't reliably http.Error.
 		log.Printf("download failed snap=%s path=%s err=%v", snap, p, err)
 		return

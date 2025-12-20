@@ -20,10 +20,12 @@
 	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
 	"remoteUser": "root",
 	"mounts": [
-		"source=/home/florian/backrest/srv002,target=/repo,type=bind,readonly",
+		"source=/home/florian/backrest,target=/repo,type=bind,readonly",
 		"source=restic-cache,target=/cache,type=volume"
 	],
-
+	"runArgs": [
+        "--env-file", "${localWorkspaceFolder}/.devcontainer/.env"
+    ], 
 	"remoteEnv": {
 		"RESTIC_REPOSITORY": "/repo",
 		"RESTIC_CACHE_DIR": "/cache"
