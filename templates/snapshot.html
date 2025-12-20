@@ -1,36 +1,36 @@
 {{define "content"}}
-
 <div class="card shadow-sm p-3 mb-3">
-  <table class="table table-striped table-hover">
-    <thead>
-      <tr>
-        <th></th>
-        <th>ShortID</th>
-        <th>Host</th>
-        <th>User</th>
-        <th>Time</th>
-      </tr>
-    </thead>
-    <tbody class="table-group-divider">
-      {{range .Snapshots}}
-        <tr class="position-relative">
-          <th scope="row">📦</th>
-          <td>{{.ShortID}}</td>
-          <td>{{.Hostname}}</td>
-          <td>{{.Username}}</td>
-          <td>{{.Time}}</td>
-          <td><a class="btn btn-primary stretched-link" href="{{lower $.RepoConfig.ID}}/browse?snap={{.ID}}&path=/" class="">Open</a></td>
-        </tr>
-      {{end}}
-    </tbody>
-    <tfoot>
-      <tr class="table-light">
-        <td colspan="6" class="text-muted small">
-          {{len .Snapshots}} snapshots
-        </td>
-      </tr>
-    </tfoot>
-  </table>
+  <div class="card-body">
+    <div class="text-muted small">Repository <code>{{.RepoConfig.ID}}</code></div>
+    <div class="text-muted small">Number of Snapshots: <code>{{len .Snapshots}}</code></div>
+  </div>
+</div>
+
+{{range .Snapshots}}
+<div class="card shadow-sm mb-1  px-3">
+  <div class="card-body">
+    <div class="row row-cols-1 row-cols-lg-2">
+      <div class="col"><h5 class="card-title">
+        📦 {{.ShortID}}</h5></div>
+      <div class="col">
+        <div class="text-muted small col">Time: </div>{{.Time}}
+      </div>
+    </div>
+    <div class="row row-cols-1 row-cols-md-1 row-cols-lg-2">
+      <div class="col">
+        <div class="text-muted small col">Host: </div>{{.Hostname}}
+      </div>
+      <div class="col">
+        <div class="text-muted small col">User: </div>{{.Username}}
+      </div>
+    </div>
+    <div class="row">
+      <div class="col">
+        <a class="stretched-link" href="{{lower $.RepoConfig.ID}}/browse?snap={{.ID}}&path=/"></a>
+      </div>
+    </div>
+    
+  </div>
 </div>
 {{end}}
 
