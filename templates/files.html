@@ -56,21 +56,25 @@
         </td>
 
         <td class="text-end">
-          {{if .IsDir}}
+         {{if .IsDir}}
             {{if .IsRepo}}
-              <a class="btn btn-primary btn-sm"
-                 href="{{$.RepoBase}}/{{lower .RepoID}}">
-                Open Repo
-              </a>
+              {{if .IsRepoConfigured}}
+                <a class="btn btn-primary btn-sm"
+                  href="/repositories/{{lower .RepoID}}">
+                  Open Repo
+                </a>
+              {{else}}
+                <a class="btn btn-outline-primary btn-sm"
+                  href="/config?id={{.RepoID}}&path=/repo/{{.RelPath}}">
+                  Configure
+                </a>
+              {{end}}
             {{else}}
               <a class="btn btn-outline-secondary btn-sm"
-                 href="{{$.FilesBase}}?path={{.RelPath}}">
+                href="/files?path={{.RelPath}}">
                 Open
               </a>
             {{end}}
-          {{else}}
-            <!-- optional: file download later -->
-            <span class="text-muted small">—</span>
           {{end}}
         </td>
       </tr>

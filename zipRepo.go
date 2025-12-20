@@ -40,9 +40,13 @@ func (a *App) handleDownloadZip(w http.ResponseWriter, r *http.Request) {
 	}
 
 	repoID := strings.ToUpper(r.PathValue("repo"))
-	repo, ok := GetRepo(repoID)
+	repo, ok, err := a.store.GetRepo(r.Context(), repoID)
 	if !ok {
 		http.NotFound(w, r)
+		return
+	}
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error in loading connfig: %v", err), 500)
 		return
 	}
 
