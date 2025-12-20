@@ -58,8 +58,11 @@ func main() {
 	filesTpl := template.Must(template.New("").
 		Funcs(funcs).
 		ParseFS(templateFS, "templates/layout.html", "templates/files.html"))
+	configTpl := template.Must(template.New("").
+		Funcs(funcs).
+		ParseFS(templateFS, "templates/layout.html", "templates/config.html"))
 
-	app := &App{indexTpl: indexTpl, browseTpl: browseTpl, filesTpl: filesTpl, store: store}
+	app := &App{indexTpl: indexTpl, browseTpl: browseTpl, filesTpl: filesTpl, configTpl: configTpl, store: store}
 
 	mux := http.NewServeMux()
 
@@ -68,6 +71,9 @@ func main() {
 	})
 
 	mux.HandleFunc("/files", app.handleFiles)
+	mux.HandleFunc("GET /config", app.handleConfigGet)
+	mux.HandleFunc("POST /config", app.handleConfigPost)
+
 	mux.HandleFunc("/repositories/{repo}", app.handleSnapshots)
 	mux.HandleFunc("/repositories/{repo}/browse", app.handleBrowse)
 	mux.HandleFunc("/repositories/{repo}/download", app.handleDownload)
@@ -114,14 +120,7 @@ func (a *App) handleSnapshots(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !ok {
-		// wenn path als query mitkommt → direkt config
-		p := r.URL.Query().Get("path")
-		if p != "" {
-			http.Redirect(w, r, "/config?id="+url.QueryEscape(repoID)+"&path="+url.QueryEscape(p), http.StatusFound)
-			return
-		}
-		http.Redirect(w, r, "/config?id="+url.QueryEscape(repoID), http.StatusFound)
-		return
+		a.handleRedirectToConfig(w, r, repoID)
 	}
 
 	snaps, err := ResticSnapshots(r.Context(), repo)
@@ -138,6 +137,15 @@ func (a *App) handleSnapshots(w http.ResponseWriter, r *http.Request) {
 	if err := a.indexTpl.ExecuteTemplate(w, "snapshot.html", data); err != nil {
 		http.Error(w, err.Error(), 500)
 	}
+}
+
+func (a *App) handleRedirectToConfig(w http.ResponseWriter, r *http.Request, repoID string) {
+	p := r.URL.Query().Get("path")
+	if p != "" {
+		http.Redirect(w, r, "/config?id="+url.QueryEscape(repoID)+"&path="+url.QueryEscape(p), http.StatusFound)
+		return
+	}
+	http.Redirect(w, r, "/config?id="+url.QueryEscape(repoID), http.StatusFound)
 }
 
 func (a *App) handleBrowse(w http.ResponseWriter, r *http.Request) {

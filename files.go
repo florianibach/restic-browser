@@ -74,7 +74,9 @@ func (a *App) handleFiles(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, fmt.Sprintf("read dir failed: %v", err), 500)
 			return
 		}
-		// restic repo exists but not configured: show listing + warning (still useful)
+		if !ok {
+			a.handleRedirectToConfig(w, r, repoID)
+		}
 	}
 
 	dirEntries, err := os.ReadDir(abs)
@@ -113,6 +115,7 @@ func (a *App) handleFiles(w http.ResponseWriter, r *http.Request) {
 				fe.IsRepo = true
 				fe.RepoID = repoID
 			}
+			//TODO: if !ok {} -> link change to config
 		}
 
 		entries = append(entries, fe)
