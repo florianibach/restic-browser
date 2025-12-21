@@ -2,53 +2,63 @@
 
 [![GitHub Repo](https://img.shields.io/badge/GitHub-Repository-blue?logo=github)](https://github.com/florianibach/restic-browser)
 
+
 A lightweight web UI to **browse, download and inspect restic backups** – built with Go and Docker.
 
-The Restic Browser lets you:
-- list snapshots
-- browse snapshot contents like a file browser
-- download single files
-- download folders as ZIP archives
+Restic Browser provides:
+- a **file browser** for your `/repo` mount
+- automatic detection of **restic repositories**
+- a **repository configuration page** backed by SQLite (password + no-lock)
+- snapshot listing, browsing and downloads (files + folder ZIP)
 
-Designed as a **read-only viewer** for restic repositories, ideal for homelabs, servers and backup monitoring setups.
+> This project is not affiliated with restic.
 
 ---
 
 ## Features
 
-- List restic snapshots
+- File Browser under `/files` (browse `/repo`)
+- Detect restic repositories automatically (`config`, `data/`, `index/`, `keys/`)
+- Configure repositories via UI (`/config`) and store settings in SQLite
+- List snapshots (newest first)
 - Browse snapshot contents
 - Download individual files
-- Download folders as ZIP (streamed, no temp restore)
+- Download folders as ZIP (streamed)
 - Docker-ready (multi-arch: amd64 & arm64)
-    - Works perfectly on Raspberry Pi
-- ⚡ Fast, lightweight Go backend
-- Ideal for homelab & Backrest setups
-
----
-
-## Screenshots
-
-coming soon...
+  - Works perfectly on Raspberry Pi
 
 ---
 
 ## Quick Start (Docker)
 
+### 1) Prepare folders
+
+- **Repositories root** (your restic repos somewhere inside this):
+  - Mounted to: `/repo`
+- **Persistent app data** (SQLite DB):
+  - Mounted to: `/data`
+
+Example on host:
+```bash
+mkdir -p ./data
+# your restic repos exist somewhere, e.g. /home/${USER}$/backup/repos
+````
+
+### 2) Run container
+
 ```bash
 docker run -d \
   -p 8080:8080 \
-  -v /path/to/restic-repo:/repo \
-  -v restic-cache:/cache \
-  -e RESTIC_REPOSITORY=/repo \
-  -e RESTIC_PASSWORD=yourpassword \
-  -e RESTIC_NO_LOCK=true \
+  -v /home/${USER}$/backup/repos:/repo:ro \
+  -v ./data:/data \
   --name restic-browser \
-  florianibach/restic-browser:latest
-````
+  floibach/restic-browser:latest
+```
 
-Then open:
- [http://localhost:8080](http://localhost:8080)
+Open:
+
+* File browser: [http://localhost:8080/](http://localhost:8080/)
+* Health check: [http://localhost:8080/health](http://localhost:8080/health)
 
 ---
 
@@ -61,23 +71,37 @@ services:
     ports:
       - "8080:8080"
     environment:
-      RESTIC_REPOSITORY: /repo
-      RESTIC_PASSWORD_FILE: /run/secrets/restic_password
-      RESTIC_CACHE_DIR: /cache
-      RESTIC_NO_LOCK: "true"
+      # Optional:
+      # CONFIG_DB_PATH: /data/config.db 
+      # RESTIC_CACHE_DIR: /cache
     volumes:
-      - /path/to/restic-repo:/repo
-      - restic-cache:/cache
-    secrets:
-      - restic_password
+      - /home/florian/backrest/repos:/repo:ro
+      - ./data:/data # Path inside container must be same as configured CONFIG_DB_PATH
+      # Optional restic cache:
+      # - restic-cache:/cache
 
-secrets:
-  restic_password:
-    file: ./secrets/restic_password.txt
-
-volumes:
-  restic-cache:
+# volumes:
+#   restic-cache:
 ```
+
+---
+
+## How it works
+
+1. Go to `/files` and browse your mounted `/repo` folder.
+2. When a folder is detected as a **restic repository**, you can:
+
+   * open it directly if already configured
+   * or configure it via `/config` (password + no-lock)
+3. After configuration, Restic Browser can run restic commands for that repo:
+
+   * `restic snapshots --json`
+   * `restic ls ... --json`
+   * `restic dump ...`
+4. Browse snapshot files and download:
+
+   * single file downloads
+   * folder ZIP downloads
 
 ---
 
@@ -85,85 +109,56 @@ volumes:
 
 ### Environment Variables
 
-| Variable               | Description                                            |
-| ---------------------- | ------------------------------------------------------ |
-| `RESTIC_REPOSITORY`    | Path to the restic repository (inside container)       |
-| `RESTIC_PASSWORD`      | Restic repository password                             |
-| `RESTIC_PASSWORD_FILE` | Alternative to `RESTIC_PASSWORD`                       |
-| `RESTIC_CACHE_DIR`     | Restic cache directory                                 |
-| `BASIC_AUTH_USER`      | Optional basic auth username                           |
-| `BASIC_AUTH_PASS`      | Optional basic auth password                           |
+| Variable           | Description                            | Default           |
+| ------------------ | -------------------------------------- | ----------------- |
+| `CONFIG_DB_PATH`   | SQLite file path used for repo configs | `/data/config.db` |
+| `RESTIC_CACHE_DIR` | Optional restic cache directory        | (empty)           |
 
----
+### Volumes
 
-## Read-only vs Locks
+| Container Path | Purpose                                                      |
+| -------------- | ------------------------------------------------------------ |
+| `/repo`        | Your repositories root (contains one or many restic repos)   |
+| `/data`        | Persistent data (SQLite DB)                                  |
+| `/cache`       | Optional restic cache (if you set `RESTIC_CACHE_DIR=/cache`) |
 
-By default, Restic Browser run with `--no-lock` enabled.
-
-This is useful when:
-
-* backups are running in parallel (e.g. via Backrest)
-* the repository is mounted read-only
-
-⚠️ **Note:**
-Running without locks is safe for browsing and downloading, but should only be used when you understand the implications.
+> Recommended: mount `/repo` read-only (`:ro`) for safety.
 
 ---
 
 ## Security Notes
 
-* The UI does **not modify** the repository
-* No restore, prune or unlock operations are exposed
-* Use Basic Auth or a reverse proxy when exposing publicly
-* Prefer mounting the repository **read-only** if possible
+* Repository passwords are currently stored in SQLite (plain text).
 
----
-
-## Architecture
-
-* Go (`net/http`, no heavy framework)
-* Restic CLI as backend
-* NDJSON parsing for `restic ls`
-* Streaming downloads (no temp files)
-* ZIP generation on-the-fly
+  * Consider restricting access to the DB volume.
+  * Future improvement could add encryption / OS secret integration.
+* Use a reverse proxy + authentication if exposing this service publicly.
+* Mount repositories read-only if possible.
 
 ---
 
 ## Development
 
-Run locally (requires restic installed):
+Run locally (requires `restic` installed):
 
 ```bash
-export RESTIC_REPOSITORY=/path/to/repo
-export RESTIC_PASSWORD=yourpassword
 go run .
 ```
 
-Or use the provided Dev Container setup.
+Or use the provided Dev Container.
 
 ---
 
 ## Roadmap / Ideas
 
-* Sort folders before files
-* Show snapshot root paths directly
-* Search inside snapshots
-* UI toggle for lock / no-lock mode
-* Restore to temp folder (optional)
+* Config list page `/configs` (edit existing repos)
+* Better sorting (folders first, sizes formatted)
+* Search within snapshot contents
+* Optional basic auth / auth middleware
+* Encrypt stored passwords
 
 ---
 
 ## License
 
 MIT
-
----
-
-## Disclaimer
-
-This project is **not affiliated with or endorsed by the restic project**.
-Restic is an independent open-source backup solution.
-
----
-
-Built for homelabs ❤️
