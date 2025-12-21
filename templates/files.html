@@ -1,95 +1,65 @@
 {{define "content"}}
-<div class="card shadow-sm mb-3">
+<div class="card shadow-sm mb-3 p-3">
   <div class="card-body">
     <div class="text-muted small">Root: <code>/repo</code></div>
     <div class="text-muted small">Pfad: <code>{{if .RelPath}}/{{.RelPath}}{{else}}/{{end}}</code></div>
+    <div class="text-muted small">Elements: <code>{{len .Entries}} entries</code></div>
   </div>
 </div>
 
-<div class="card shadow-sm">
-  <table class="table table-hover mb-0">
-    <thead>
-      <tr>
-        <th style="width: 40px;"></th>
-        <th>Name</th>
-        <th class="text-end">Size</th>
-        <th>Modified</th>
-        <th style="width: 220px;"></th>
-      </tr>
-    </thead>
 
-    <tbody class="table-group-divider">
-      {{if .ShowParent}}
-      <tr>
-        <td>📁</td>
-        <td colspan="4">
-          <a href="{{.FilesBase}}?path={{.ParentRel}}">.. nach oben</a>
-        </td>
-      </tr>
-      {{end}}
+{{if .ShowParent}}
+<div class="card shadow-sm mb-4 px-3">
+  <div class="card-body">
+    <div class="row row-cols-1 row-cols-lg-1">
+      <div class="col">
+        📁 .. up 
+        <a class="stretched-link" href="{{.FilesBase}}?path={{.ParentRel}}"></a>
+      </div>
+    </div>
+  </div>
+</div>
+{{end}}
 
-      {{range .Entries}}
-      <tr>
-        <td>
-          {{if .IsDir}}📁{{else}}📄{{end}}
-        </td>
-
-        <td>
-          {{if .IsDir}}
-            {{if .IsRepo}}
-              <strong>{{.Name}}</strong>
-              <div class="text-muted small">Restic repository</div>
-            {{else}}
-              {{.Name}}
-            {{end}}
+{{range .Entries}}
+<div class="card shadow-sm mb-1 px-3">
+  <div class="card-body">
+    <div class="row row-cols-1 row-cols-lg-3">
+      <div class="col">
+        {{if .IsDir}}📁{{else}}📄{{end}}
+          {{if and .IsDir .IsRepo}}
+            <strong class="mb-2">{{.Name}}</strong>
+            <div>
+              <span class="small border border-2 rounded p-1 {{if .IsRepoConfigured}}border-primary{{else}}border-warning{{end}}">
+                Restic repository {{if ne .IsRepoConfigured true}}- configuration reguired{{end}}
+              </span>
+            </div>
           {{else}}
             {{.Name}}
           {{end}}
-        </td>
-
-        <td class="text-end text-muted">
-          {{if .IsDir}}—{{else}}{{.Size}}{{end}}
-        </td>
-
-        <td class="text-muted">
-          {{if .ModTime.IsZero}}—{{else}}{{.ModTime}}{{end}}
-        </td>
-
-        <td class="text-end">
-         {{if .IsDir}}
-            {{if .IsRepo}}
-              {{if .IsRepoConfigured}}
-                <a class="btn btn-primary btn-sm"
-                  href="/repositories/{{lower .RepoID}}">
-                  Open Repo
-                </a>
-              {{else}}
-                <a class="btn btn-outline-primary btn-sm"
-                  href="/config?id={{.RepoID}}&path=/repo/{{.RelPath}}">
-                  Configure
-                </a>
-              {{end}}
+      </div>
+      <div class="col">
+        {{if .IsDir}}{{else}}<div class="text-muted small col">Size: </div>{{.Size}}{{end}}
+      </div>
+      <div class="col">
+        <div class="text-muted small col">Modified: </div>{{if .ModTime.IsZero}}—{{else}}{{.ModTime}}{{end}}
+      </div>      
+        {{if .IsDir}}
+          {{if .IsRepo}}
+            {{if .IsRepoConfigured}}
+              <a class="stretched-link" href="/repositories/{{lower .RepoID}}"></a>
             {{else}}
-              <a class="btn btn-outline-secondary btn-sm"
-                href="/files?path={{.RelPath}}">
-                Open
-              </a>
+              <a class="stretched-link" href="/config?id={{.RepoID}}&path=/repo/{{.RelPath}}"></a>
             {{end}}
+          {{else}}
+            <a class="stretched-link" href="/files?path={{.RelPath}}"></a>
           {{end}}
-        </td>
-      </tr>
-      {{end}}
-    </tbody>
-
-    <tfoot>
-      <tr class="table-light">
-        <td colspan="5" class="text-muted small">
-          {{len .Entries}} entries
-        </td>
-      </tr>
-    </tfoot>
-  </table>
+        {{end}}
+    </div>
+  </div>
 </div>
+{{end}}
+
 {{end}}
 
 {{template "layout" .}}
