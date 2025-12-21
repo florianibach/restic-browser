@@ -1,5 +1,5 @@
 {{define "content"}}
-<div class="card shadow-sm mb-3">
+<div class="card shadow-sm mb-3 p-3">
   <div class="card-body">
     <div class="d-flex align-items-center justify-content-between">
       <div>
@@ -11,43 +11,49 @@
   </div>
 </div>
 
-<table class="table table-hover">
-  <thead>
-    <tr><th>Name</th><th>Type</th><th class="right">Size</th><th class="right">Actions</th></tr>
-  </thead>
-  <tbody class="table-group-divider">
-  {{if .ParentPath}}
-    <tr>
-      <td colspan="4">
-        📁 <a href="browse?snap={{.Snap}}&path={{.ParentPath}}">.. up</a>
-      </td>
-    </tr>
-  {{end}}
-  {{range $index, $_ := .Entries}}
-    <tr>
-      <td>
+{{if .ParentPath}}
+<div class="card shadow-sm mb-1 px-3">
+  <div class="card-body">
+    <div class="row row-cols-1 row-cols-lg-1">
+      <div class="col">
+        📁 .. up 
+        <a class="stretched-link" href="browse?snap={{.Snap}}&path={{.ParentPath}}"></a>
+      </div>
+    </div>
+  </div>
+</div>
+{{end}}
+
+{{range $index, $_ := .Entries}}
+<div class="card shadow-sm mb-1 px-3 {{if eq $index 0}} mb-4 {{end}}">
+  <div class="card-body">
+    <div class="row row-cols-1 row-cols-lg-4">
+      <div class="col" style="transform: rotate(0);">
         {{if eq .Type "dir"}}
-          📁 <a href="browse?snap={{$.Snap}}&path={{.Path}}">{{basename .Path}}</a>
+          📁 {{basename .Path}}<a class="stretched-link" href="browse?snap={{$.Snap}}&path={{.Path}}"></a>
         {{else}}
           📄 {{basename .Path}}
         {{end}}
-      </td>
-      <td class="muted">{{.Type}}</td>
-      <td class="right muted">{{.Size}}</td>
-      <td class="right">
+      </div>
+      <div class="col">
+        <div class="text-muted small col">Type: </div>{{.Type}}
+      </div>
+      <div class="col">
+        {{if ne .Type "dir"}}<div class="text-muted small col">Size: </div>{{.Size}}{{end}}
+      </div>
+      <div class="col">
         {{if eq .Type "dir"}}
-          <a class="btn btn-outline" href="download-zip?snap={{$.Snap}}&path={{.Path}}">Download folder as ZIP</a>
+          <a class="btn btn-outline-secondary" href="download-zip?snap={{$.Snap}}&path={{.Path}}">Download folder as ZIP</a>
         {{else}}
-          <a class="btn" href="download?snap={{$.Snap}}&path={{.Path}}">Download</a>
+          <a class="btn btn-outline-secondary" href="download?snap={{$.Snap}}&path={{.Path}}">Download</a>
         {{end}}
-      </td>
-    </tr>
-    {{if eq $index 0}}
-      <tr class="table-secondary"><td colspan="4"></td></tr>
-    {{end}}
-  {{end}}
-  </tbody>
-</table>
+      </div>
+    </div>
+  </div>
+</div>
+
+{{end}}
+
 {{end}}
 
 {{template "layout" .}}
