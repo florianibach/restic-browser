@@ -28,9 +28,9 @@
 <div class="card shadow-sm mb-1 px-3 {{if eq $index 0}} mb-4 {{end}}">
   <div class="card-body">
     <div class="row row-cols-1 row-cols-lg-4">
-      <div class="col" style="transform: rotate(0);">
+      <div class="col">
         {{if eq .Type "dir"}}
-          📁 {{basename .Path}}<a class="stretched-link" href="browse?snap={{$.Snap}}&path={{.Path}}"></a>
+          📁 {{basename .Path}}
         {{else}}
           📄 {{basename .Path}}
         {{end}}
@@ -43,11 +43,13 @@
       </div>
       <div class="col">
         {{if eq .Type "dir"}}
-          <a class="btn btn-outline-secondary" href="download-zip?snap={{$.Snap}}&path={{.Path}}">Download folder as ZIP</a>
+            <a class="btn btn-outline-secondary z-2 position-relative" href="download-zip?snap={{$.Snap}}&path={{.Path}}">Download folder as ZIP</a>
+          
         {{else}}
-          <a class="btn btn-outline-secondary" href="download?snap={{$.Snap}}&path={{.Path}}">Download</a>
+          <a class="btn btn-outline-secondary z-2 position-relative" href="download?snap={{$.Snap}}&path={{.Path}}">Download</a>
         {{end}}
       </div>
+      <a class="stretched-link" href="browse?snap={{$.Snap}}&path={{.Path}}"></a>
     </div>
   </div>
 </div>
