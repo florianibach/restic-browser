@@ -15,6 +15,11 @@ Restic Browser provides:
 
 ---
 
+This project is built and maintained in my free time.  
+If it helps you or saves you some time, you can support my work on [![BuyMeACoffee](https://raw.githubusercontent.com/pachadotdev/buymeacoffee-badges/main/bmc-black.svg)](https://buymeacoffee.com/floibach)
+
+Thank you for your support!
+
 ## Features
 
 - File Browser under `/files` (browse `/repo`)
@@ -162,7 +167,3 @@ Or use the provided Dev Container.
 ## License
 
 MIT
-
-## Support me
-
-[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/floibach)
