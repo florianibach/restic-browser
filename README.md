@@ -2,6 +2,7 @@
 
 [![GitHub Repo](https://img.shields.io/badge/GitHub-Repository-blue?logo=github)](https://github.com/florianibach/restic-browser)
 
+[![DockerHub Repo](https://img.shields.io/badge/Docker_Hub-Repository-blue?logo=docker)](https://hub.docker.com/r/floibach/restic-browser)
 
 A lightweight web UI to **browse, download and inspect restic backups** – built with Go and Docker.
 
